@@ -1,0 +1,153 @@
+def LogAppend=""
+def LogAppend1 = ""
+def dbusername = "sepmdbc"
+def dbuserpwd = "SymantecDB12345"
+
+Windows win = new Windows(DomainName:DomainName,HostName:HostName,metaProperties:metaProperties)
+
+//READ SERVER DETAILS FROM CSV
+ 
+String FilePath2 = "//KPGIGNIOAPPS04/SQL/SQLServers.csv"
+  
+Reader reader2 = new BufferedReader(new FileReader(FilePath2))
+org.apache.commons.csv.CSVParser csvParser2 = new org.apache.commons.csv.CSVParser(reader2, org.apache.commons.csv.CSVFormat.DEFAULT
+.withFirstRecordAsHeader()
+.withIgnoreHeaderCase()
+.withTrim())
+
+
+for (org.apache.commons.csv.CSVRecord csvRecord2 : csvParser2) {
+
+TargetHost = csvRecord2.get("ServerName")
+
+
+	(checkHostReachablity_Return,checkHostReachablity_Output)=win.checkHostReachability(HostName:TargetHost)
+	if(!checkHostReachablity_Return.equals("0"))
+	{
+		LogAppend+="Host not reachable" +TargetHost+ "<br>"
+		FailureHost+="&nbsp;"+TargetHost+","
+	}
+  
+	if(checkHostReachablity_Return.equals("0"))
+	{
+	
+		//considering input as ip address, converting it to hostname(for ignio)
+		//(valuereturn,valueoutput)=getvaluefrompostgresDBforhealth(DomainName:"isddc.men.maxis.com.my",LoginName:"ignioprd",HostName:"SGBIGNIOAPPP04",DBLocation:'C:\\Program Files\\PostgreSQL\\10\\bin',DBPassword:"Ign!oTCSM@xis",DBUserName:"postgres",DBName:"analyzerDB",Header1:"hostname",TableName:"outputnodeoss",Header2:"primaryipaddress",FieldValue:TargetHost,ComputerName:"SGBIGNIODBP01",ComputerLoginPassword:"MK3@Ms2Kptwq1JK")
+		//TargetHost = valueoutput
+		//UAT
+		//(valuereturn,valueoutput)=getvaluefrompostgresDBforhealth(DomainName:"isddc.men.maxis.com.my",LoginName:"igniodev",HostName:"KPGIGNIOAPPS04",DBLocation:'C:\\Program Files\\PostgreSQL\\10\\bin',DBPassword:"Ignio@Maxis",DBUserName:"postgres",DBName:"analyzerDB",Header1:"hostname",TableName:"outputnodeoss",Header2:"primaryipaddress",FieldValue:TargetHost,ComputerName:"KPGIGNIODBS01",ComputerLoginPassword:"JK3@Ms2Kptwq1MK")
+		//TargetHost = valueoutput
+		
+		//considering input as hostname, converting it to ip address(for python)
+		
+		//(valuereturn,ipaddress)=getvaluefrompostgresDBforhealth(DomainName:"isddc.men.maxis.com.my",LoginName:"ignioprd",HostName:"SGBIGNIOAPPP04",DBLocation:'C:\\Program Files\\PostgreSQL\\10\\bin',DBPassword:"Ign!oTCSM@xis",DBUserName:"postgres",DBName:"analyzerDB",Header1:"primaryipaddress",TableName:"outputnodeoss",Header2:"hostname",FieldValue:TargetHost,ComputerName:"SGBIGNIODBP01",ComputerLoginPassword:"MK3@Ms2Kptwq1JK")
+		//UAT
+		(valuereturn1,ipaddress)=getvaluefrompostgresDBforhealth(DomainName:"isddc.men.maxis.com.my",LoginName:"igniodev",HostName:"KPGIGNIOAPPS04",DBLocation:'C:\\Program Files\\PostgreSQL\\10\\bin',DBPassword:"Ignio@Maxis",DBUserName:"postgres",DBName:"analyzerDB",Header1:"primaryipaddress",TableName:"outputnodeoss",Header2:"hostname",FieldValue:TargetHost,ComputerName:"KPGIGNIODBS01",ComputerLoginPassword:"JK3@Ms2Kptwq1MK")
+ 
+	}
+  
+	if(checkHostReachablity_Return.equals("0"))
+	{
+	
+		//(valuereturn1,valueoutput1)=getvaluefrompostgresDBforhealth(DomainName:"isddc.men.maxis.com.my",LoginName:"ignioprd",HostName:"SGBIGNIOAPPP04",DBLocation:'C:\\Program Files\\PostgreSQL\\10\\bin',DBPassword:"Ign!oTCSM@xis",DBUserName:"postgres",DBName:"andrewDB",Header1:"username",TableName:"credentials_vault",Header2:"hostname",FieldValue:TargetHost,ComputerName:"SGBIGNIODBP01",ComputerLoginPassword:"MK3@Ms2Kptwq1JK")
+    
+	//UAT
+  	  (valuereturn1,valueoutput1)=getvaluefrompostgresDBforhealth(DomainName:"isddc.men.maxis.com.my",LoginName:"igniodev",HostName:"KPGIGNIOAPPS04",DBLocation:'C:\\Program Files\\PostgreSQL\\10\\bin',DBPassword:"Ignio@Maxis",DBUserName:"postgres",DBName:"andrewDB",Header1:"username",TableName:"credentials_vault",Header2:"hostname",FieldValue:TargetHost,ComputerName:"KPGIGNIODBS01",ComputerLoginPassword:"JK3@Ms2Kptwq1MK")
+ 
+	}
+
+    if((! valuereturn1.equals("0")) || ( valueoutput1.equals("NULL")))
+	{
+
+        LogAppend+="Failed to check user ID from DB for host" +TargetHost+ "\\n"
+		FailureHost+="&nbsp;"+TargetHost+","
+      
+    }
+  
+    if(( valuereturn1.equals("0")) && (! valueoutput1.equals("NULL")))
+    {
+	
+		String[] m1 = valueoutput1.split('\\\\')
+        domainname = m1[0]
+		loginname = m1[1]
+
+	
+	(getStat_Return1,getStat_Output1)=getServiceStatusHTML(DomainName:domainname,LoginName:loginname,HostName:'SGBIGNIODBP01',IncludeServiceNames:'MSSQL*',ExcludeServiceNames:'"*FDL*","*olap*"')
+  
+	}
+
+	if(!getStat_Return1.equals("0"))
+	{
+		LogAppend+=Failed to fetch service status from +"\\n"
+		
+	}
+  
+	if(! getStat_Output1.equals(""))
+	{   
+	 try
+	 {
+		String[] m2 = getStat_Output1.split('-')
+        runnser = m2[0]
+		stopser = m2[1]
+	 }
+		
+	catch(Exception ex) 
+        {
+             println("Catching the exception");
+        }
+		//insert  service status servername,runningser,stopservices
+      
+	}
+	
+	if (!insertpostgresReturn.equals("0"))
+	{
+		LogAppend+="Failed to insert service status in DB for Host " +TargetHost+ "<br>"
+	}
+	
+	if (insertpostgresReturn.equals("0"))
+	{
+		LogAppend+="Service status updated successfully in DB for Host " +TargetHost+ "<br>"
+		
+		(getSQLDBInstances_Return1,getSQLDBInstances_Output1)=getSQLDBInstances(DomainName:domainname,LoginName:loginname,HostName:hostname)
+		
+	}
+	
+	if(getSQLDBInstances_Output1.equals(""))
+	{
+		String[] m3 = getSQLDBInstances_Output1.split('\\n')
+		for (String ss: m3)
+		{
+		 def fin = []
+		 fin.add(ss)
+		}
+		fin = fin.join(",")
+        println fin
+		def hostins = "$ipaddress $fin $runnser $stopser $dbusername $dbuserpwd"
+		
+		(runPythonScript_Return1,runPythonScript_Output1)=runPythonScript(DomainName:domainname,LoginName:loginname,HostName:'SGBIGNIODBP01',ScriptFilePath:"",ScriptArgs:hostins)
+					
+	}
+
+
+	
+	if (LogAppend.contains("successfully"))
+	{
+	
+		(runPythonScript_Return1,runPythonScript_Output1)=runPythonScript(DomainName:domainname,LoginName:loginname,HostName:'SGBIGNIODBP01',ScriptFilePath:"",ScriptArgs:"")
+	
+	}
+	
+	if (!runPythonScript_Return1.equals("0"))
+	{
+		LogAppend+= "Failed to run python script <br>"
+	}
+	
+	if (runPythonScript_Return1.equals("0"))
+	{
+		LogAppend+= "SQL Healthcheck done successfully <br>"
+	}
+	
+}	
+	
+	
+	

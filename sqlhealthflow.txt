@@ -1,0 +1,221 @@
+import requests 
+
+String LoginUrl = BPPMUrl + "/bppmws/api/authenticate/login";
+
+r = requests.post(url = API_ENDPOINT, data = data) 
+
+========
+get all instance 
+sql service status 
+sql server agent status
+db status - Server
+disk space report - server level
+log space - Instance
+error logs 1st 10line,listener details,node details - Instance
+	- EXEC sp_readerrorlog 6, 1, 'Listener'
+blocking session with lead blocker query details - Instance
+Node fail over - Check feasibility
+
+===============
+get all instance and count
+SQL default and agent service - running & stopped
+SQL Named and its agent service - running & stopped
+No of DBs - 
+
+SQLCMD -S ${getCountOfDB:DBInstanceName}  -d master, -W -Q "DECLARE @v_count int;
+BEGIN
+set @v_count =(SELECT count(*) FROM sys.databases )
+If @v_count is NULL
+SET @v_count ='NULL'
+Print @v_count
+END;"
+
+ offline - select * from sys.databases where state_desc='OFFLINE'
+ online - select * from sys.databases where state_desc='ONLINE'
+ 
+ SQLCMD -S ${getAllDBState:DBInstanceName}  -d master,-W -Q  "DECLARE @v_getAllDBState varchar(100);
+BEGIN
+begin try
+select name from sys.databases where state_desc='OFFLINE'  
+print @v_getAllDBState
+end try
+begin catch
+SET @v_getAllDBState ='NULL'
+Print @v_getAllDBState
+end catch
+END;" 
+
+Blocking session count - 
+ its details
+Log space for every instance
+Error logs for every instance 
+
+
+===============
+
+input - ip/hostname
+html format:
+	SERVERNAME
+DISK SPACE REPORT
+SQLSERVICE STATUS 
+SQLSERVER AGENT STATUS
+LIST OF DBS AND STATUS
+	BLOCKING SESSION REPORT TABLE	
+	LOG SPACE REPORT
+	ERROR LOG REPORT
+
+DASHBOARD:
+
+NO OF SERVERS	Running services	Stopped services	OnlineDBs	OfflineDBs
+
+select server 1 -> view its details(instances) -> Block session,error logs
+Disk space report
+list stopped services
+list offline dbs
+list of block sessions
+display error logs
+
+
+===============
+
+$ServiceName=Get-Service "MSSQLSERVER" | select -ExpandProperty Name  // 11
+$ServiceName=Get-Service "MSSQLSERVER$NamedInstance" | select -ExpandProperty Name
+$ServiceName=Get-Service "SQLSERVERAGENT" | select -ExpandProperty Name
+$ServiceName=Get-Service "SQLSERVERAGENT$Named" | select -ExpandProperty Name
+
+MSSQL`$${NamedInstance}
+SQLAgent`$${NamedInstance}
+
+
+======================
+GET ALL INSTALLED INSTANCE:
+
+$Output=( (get-itemproperty 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server').InstalledInstances);
+echo $Output;
+
+if inst char count = 11, - Default INSTANCE
+if inst char count > 11, - Named INSTANCE
+
+====================
+getAllSQLDBStatus 
+
+SQLCMD -S ${getAllSQLDBStatus:DBInstanceName} -d master, -W -Q "DECLARE @v_DBStatus varchar(100);
+BEGIN
+begin try
+SELECT @@servername as server_name,name as Database_Name, state_desc as ${getAllSQLDBStatus:Header}
+FROM sys.databases
+end try
+begin catch
+SET @v_DBStatus  ='NULL'
+Print @v_DBStatus
+end catch
+END;" -w 4000 -s "," | Format-Table >> "${getAllSQLDBStatus:FilePath}.csv"
+
+
+====================
+
+
+" DISK SPACE DETAILS :"  >> ${getDiskSpaceDetails:FileLocation}\${getDiskSpaceDetails:FileName}
+SQLCMD -S ${getDiskSpaceDetails:DBInstanceName} -d master, -h-1 -Q "DECLARE @v_DiskSpace varchar(100);
+BEGIN
+    begin try
+    EXEC('master..xp_fixeddrives')
+    end try
+    begin catch
+    SET @v_DiskSpace ='NULL'
+    Print @v_DiskSpace
+    end catch
+END;" | Format-Table >> "${getDiskSpaceDetails:FileLocation}\${getDiskSpaceDetails:FileName}"
+
+
+======================
+
+$Temp=SQLCMD -S $DBInstanceName -d $DBName, -h-1 -Q "DECLARE @v_sizeoflogfile varchar(100);
+BEGIN
+begin try
+set @v_sizeoflogfile = (SELECT sum((size*8)/1024) SizeMB FROM sys.master_files WHERE DB_NAME(database_id) = '$DBName' AND type_desc='LOG');
+print @v_sizeoflogfile
+end try
+begin catch
+SET @v_sizeoflogfile ='NULL'
+Print @v_sizeoflogfile
+end catch
+END;"
+gwmi -query $Temp | ConvertTo-Html | Out-File -FilePath ${getSQLDBLogFileSize:HTMLFileName} -Append
+
+
+=================================
+
+$Temp=SQLCMD -S ${getSQLDBLogFileSize:DBInstanceName} -d master, -W -Q "DECLARE @v_getLogReviews Nvarchar(1000);
+BEGIN
+WITH fs
+AS
+(
+    SELECT database_id, TYPE, SIZE * 8.0 / 1024 SIZE
+    FROM sys.master_files
+)
+SELECT 
+    name,
+    (SELECT SUM(SIZE) FROM fs WHERE TYPE = 0 AND fs.database_id = db.database_id) DataFileSizeMB,
+    (SELECT SUM(SIZE) FROM fs WHERE TYPE = 1 AND fs.database_id = db.database_id) LogFileSizeMB
+FROM sys.databases db
+END;" 
+gwmi -query $Temp | ConvertTo-Html | Out-File -FilePath ${getSQLDBLogFileSize:HTMLFileName} -Append
+
+
+=======================
+
+"SERVER ERROR LOGS IN INSTANCE ${getServerErrorLogs:DBInstanceName} "  >> ${getServerErrorLogs:FileLocation}\${getServerErrorLogs:FileName}
+SQLCMD -S ${getServerErrorLogs:DBInstanceName} -d master, -W -Q "DECLARE @v_getLogReviews Nvarchar(1000);
+BEGIN
+set nocount on
+begin try
+execute master..sp_ReadErrorLog 0, 1,'${getServerErrorLogs:String}'
+execute master..sp_ReadErrorLog 1, 1,'${getServerErrorLogs:String}'
+end try
+begin catch
+SET @v_getLogReviews ='NULL'
+Print @v_getLogReviews
+end catch
+END;" -w 4000 -s ","  | Format-Table >>  "${getServerErrorLogs:FileLocation}\${getServerErrorLogs:FileName}"
+
+=======================
+getBlockingSessionDetailsPSLive
+
+$Temp=SQLCMD -S ${getBlockingSessionDetailsPSLive:DBInstanceName} -d tempdb, -h-1 -Q "DECLARE @v_restorestatus varchar(8000);
+DECLARE @SessionId1 nvarchar(max),@BlockingSessionId1 varchar(128),@LoginName1 varchar(128),
+@DatabaseName1 varchar(128),@Query1 varchar(128);
+BEGIN
+	SET NOCOUNT ON 
+	BEGIN
+	IF OBJECT_ID('tempdb..tmpTable1') is not null
+	DROP TABLE tempdb..tmpTable1
+	CREATE TABLE tempdb..tmpTable1(SessionId varchar(128),BlockingSessionId varchar(128),LoginName nvarchar(128),
+	DatabaseName nvarchar(128),Query nvarchar(max))
+	INSERT INTO tempdb..tmpTable1
+	SELECT r.session_id,r.blocking_session_id,DB_NAME(r.database_id) AS Database_Name,
+s.login_name,t.text as Query_Text FROM sys.dm_exec_requests r
+CROSS APPLY sys.dm_exec_sql_text(sql_handle) t INNER JOIN sys.dm_exec_sessions s ON r.session_id = s.session_id WHERE r.blocking_session_id <> 0;
+	PRINT 'SessionId | BlockingSessionId | LoginName | DatabaseName | Query <BR>'
+	DECLARE cursorName CURSOR -- Declare cursor
+	LOCAL SCROLL STATIC
+	FOR 
+	Select SessionId,BlockingSessionId,LoginName,DatabaseName,Query from tempdb..tmpTable1
+	OPEN cursorName 
+	FETCH NEXT FROM cursorName
+    INTO @SessionId1 , @BlockingSessionId1,@LoginName1 ,@DatabaseName1,@Query1
+    WHILE @@FETCH_STATUS = 0
+		BEGIN 
+			PRINT @SessionId1 + '| ' + @BlockingSessionId1 + '| ' + @LoginName1 + '|'+ @DatabaseName1 + '| ' + @Query1 +'<BR>'  
+			FETCH NEXT FROM cursorName
+			INTO @SessionId1 , @BlockingSessionId1,@LoginName1 ,@DatabaseName1,@Query1
+		END
+		CLOSE cursorName
+		DEALLOCATE cursorName
+	IF OBJECT_ID('tempdb..tmpTable1') is not null
+	DROP TABLE tempdb..tmpTable1
+	End
+End" | Out-File -FilePath F:\maxis\PSDrives.html -Append
+gwmi -query $Temp | ConvertTo-Html | Out-File -FilePath F:\maxis\PSDrives.html -Append
+$tot=$Temp.count-2
+Write-Output "Total number of rows are :"$tot

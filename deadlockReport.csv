@@ -1,0 +1,37 @@
+*** 2019-06-10 19:44:22.928
+*** SESSION ID:(389.57892) 2019-06-10 19:44:22.916
+DEADLOCK DETECTED
+Current SQL statement for this session:
+UPDATE TABLE_CONTACT SET STATUS = 0, UPDATE_STAMP = SYSDATE WHERE OBJID = :B1 
+----- PL/SQL Call Stack -----
+  object      line  object
+  handle    number  name
+688890a00      5787  package body SA.PKG_CMSS_CLA_APP
+688890a00      1088  package body SA.PKG_CMSS_CLA_APP
+70df29198         1  anonymous block
+The following deadlock is not an ORACLE error. It is a
+deadlock due to user error in the design of an application
+or from issuing incorrect ad-hoc SQL. The following
+information may aid in determining the deadlock:
+Deadlock graph:
+                       ---------Blocker(s)--------  ---------Waiter(s)---------
+Resource Name          process session holds waits  process session holds waits
+TX-00010009-05bb0102       222     389     X            157     106           X
+TX-0003000a-019de3c5       157     106     X            222     389           X
+session 389: DID 0001-00DE-0002BDFB	session 106: DID 0001-009D-0003C43B
+session 106: DID 0001-009D-0003C43B	session 389: DID 0001-00DE-0002BDFB
+Rows waited on:
+Session 106: obj - rowid = 00006491 - AAAGSRADLAABj2qAAU
+  (dictionary objn - 25745, file - 203, block - 409002, slot - 20)
+Session 389: obj - rowid = 000025D8 - AAACXYAFQAAB7HIAAf
+  (dictionary objn - 9688, file - 336, block - 504264, slot - 31)
+Information on the OTHER waiting sessions:
+Session 106:
+  pid=157 serial=9501 audsid=406065451 user: 1163/<none>
+  O/S info: user: wmadmin, term: unknown, ospid: 1234, machine: SGBWMISPRD02
+            program: JDBC Thin Client
+  application name: JDBC Thin Client, hash value=0
+  Current SQL Statement:
+  UPDATE TABLE_CONTACT_ROLE SET PRIMARY_SITE = 2 WHERE CONTACT_ROLE2CONTACT = :B1 AND PRIMARY_SITE = 1
+End of information on OTHER waiting sessions.
+===================================================

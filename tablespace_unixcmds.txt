@@ -1,0 +1,21 @@
+if [[ "$combined" == "$totmpt"* ]]; then
+continue
+fi
+
+mountpoint=` df -Pk $totmpt | awk 'NR > 1 {print $NF}'`
+Tspace=`df -Pm $mountpoint  | tail -1 | awk '{print $2'} | tr -d '\n'`
+mul=$(echo "$Tspace * 955555" | bc)
+TspaceT=$(echo "$mul / 100" | bc)
+space=`df -Pm $mountpoint  | tail -1 | awk '{print $3'} | tr -d '\n'`
+
+
+df -Pm /archive  | tail -1 | awk '{print $2'} | tr -d '\n'
+
+AvailSp=`df -Pm $mountpoint  | tail -1 | awk '{print $3'} | tr -d '\n'`
+RemSp=`df -Pm $mountpoint  | tail -1 | awk '{print $4'} | tr -d '\n'`
+TotalSpace=$(echo "$AvailSp + $RemSp" | bc)
+mul=$(echo "$TotalSpace * 97" | bc)
+
+
+/archive/,/home/oracle/jmsdb/,/data/oradata/AUDITDB11g/
+echo '/archive/,/home/oracle/jmsdb/,/data/oradata/AUDITDB11g/,/home/oracle/jmsdb/,/archive/,/abc/' | sed -r ':a; s/\b([[:alnum:]]+)\b(.*)\b\1\b/\1\2/g; ta; s/(, )+/, /g; s/, *$//'

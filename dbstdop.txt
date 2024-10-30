@@ -1,0 +1,36 @@
+TN="V\$INSTANCE"
+export ORACLE_SID=AUDITDB11g
+export ORACLE_HOME=/oracle/app/product/11g/client
+export PATH=$PATH:$ORACLE_HOME/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME/lib:$ORACLE_HOME
+export TNS_ADMIN=/oracle/app/product/11g/client/network/admin
+RETVAL=`sqlplus -s TESTDBA/TESTDBA_12345@AUDITDB11g << EOF
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+DECLARE
+v_mountstatus varchar2(100);
+FUNCTION  getDBStatusWithoutSysdba
+   RETURN varchar2
+   IS Val_Mount varchar2(100) ;
+BEGIN
+select status into Val_Mount from ${TN};
+   RETURN(Val_Mount);
+EXCEPTION
+WHEN NO_DATA_FOUND THEN
+Val_Mount := 'NULL';
+RETURN(Val_Mount);
+END  getDBStatusWithoutSysdba;
+BEGIN
+v_mountstatus :=  getDBStatusWithoutSysdba;
+DBMS_OUTPUT.put_line (v_mountstatus);
+END;
+/
+EXIT sql.sqlcode;
+EOF`
+
+if [ -z "$RETVAL" ] 
+then
+echo "NULL"
+else
+echo "$RETVAL"
+fi

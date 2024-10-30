@@ -1,0 +1,32 @@
+File System Threshold: 80%
+Tablespace Threshold : 84%
+ 
+case 1 : do not add datafile --> for below tablespaces --> report to DB team
+select tablespace_name, count(*) from dba_data_files group by tablespace_name having count(*) > 900 ;
+ 
+ 
+case 2 : do not addd datafile if below percent is greater than 90% --- report to DB team
+select round((select count(*) from dba_data_files )/(select value from v$parameter where name='db_files')*100,2) from dual;
+ 
+ 
+case-3 : tablespace full - resize one datafile  --> take size to be added, change fs threshold,df threshold in resize df
+            - resize multiple datafiles ( upto 30 gb max ) --> take size to be added, change fs threshold,df threshold in resize df(half)
+			  - change(reduce) df threshold in std op if 96mb is to be added, df thres = 48.
+            - add/resize only for 3 iterations
+           
+ 
+case-4 : tablespace full - add new datafile from existing mount point once if the datafile reaches 30G  
+							--> chnge df threshold to 0 in resize std op
+            - add new datafile from second mount point once if the first one crosses 80%  --> chnge 1st fs threshold in addf  //delete datafile in /data
+				--> chnge df threshold to 0 in resize std op and make first mountpt more than 80% 
+            - resize existing datafile till the FS reaches 80% and then add a new datafile from the other data related mount point
+				--> make 1st fs to 79% and and change(reduce) df threshold in std op if 96mb is to be added, df thres = 48.
+            - add/resize only for three iterations
+ 
+case 5 : It must not proceed with the addition/resize and should throw a mail to DBA Team if any of the below cases observed by IGNIO-
+            a. unable to bring tablespace to threshold(84%) within three iterations
+			  -->change(reduce) df threshold in std op if 96mb is to be added, df thres = 10.
+            b. more than 30GB to be added
+            c. no space in one/multiple FS ( 20% free rule )
+			
+		

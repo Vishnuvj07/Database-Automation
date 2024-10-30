@@ -1,0 +1,90 @@
+IgnioSystemLib isl = new IgnioSystemLib(nodeDetails:nodeDetails,operationName:operationName,metaProperties:metaProperties);
+String[] LogMessage_Append = "";
+def LogOutput;
+def mailContent = ""
+String DN = DomainName;
+String HLN = LoginName;
+String HN = HostName;
+
+
+
+
+(getFileReturn,getFileOutput) =  getFile(DomainName:DN,LoginName:HLN,HostName:HN,FolderName:TraceFileName);
+
+if(!getFileReturn.equals("0"))
+{
+
+LogMessage_Append +="Failed to get the trace file on the host $HostName";
+return ["1", LogMessage_Append.join("\r\n")];
+}
+ 
+if(getFileReturn.equals("0"))
+{
+
+(getLinesFromFileUsingPatternrReturn,getLinesFromFileUsingPatternOutput) =  getLinesFromFileUsingPattern(DomainName:DN,LoginName:HLN,HostName:HN,FolderName:TraceFileName);
+
+}
+
+if(!getLinesFromFileUsingPatternrReturn.equals("0"))
+{
+
+LogMessage_Append +="Failed to execute the block to get contents from trace file on the host $HostName";
+return ["1", LogMessage_Append.join("\r\n")];
+}
+
+if((getLinesFromFileUsingPatternrReturn.equals("0")) && (getLinesFromFileUsingPatternOutput.equals("")))
+{
+LogMessage_Append +="Failed to get the trace file contents on the host $HostName";
+return ["1", LogMessage_Append.join("\r\n")];
+}
+ 
+if((getLinesFromFileUsingPatternrReturn.equals("0")) && (!getLinesFromFileUsingPatternOutput.equals("")))
+{
+
+Date date = new Date()
+println date
+java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("ddMMyyyyHHmmss");
+String strDate= formatter.format(date);
+println(strDate)
+String OutFilePath2 = "//KPGIGNIOAPPS04/OracleTest/DBDeadlockReport_${strDate}.txt"
+BufferedWriter bw = new BufferedWriter(new FileWriter(OutFilePath2))
+
+String[] a = getLinesFromFileUsingPatternOutput.split("\n");
+def con = ""
+
+		for( x=0;x<a.length;x++ )	 
+		{
+		    b=a[x]
+			//b=a[x].replaceAll("\\t","	");
+		    con += "$b <br>";
+			c = "$b";
+			bw.write(c);
+			bw.newLine();
+			
+        }
+        
+
+		
+		(sendMailReturn3,sendMailOutput3)=isl.SendMail(to:MailID,cc:'',bcc:'',folderpath:'//KPGIGNIOAPPS04/OracleTest/DBDeadlockReport_${strDate}.txt',content:"Hi,<br><br>Please find the Detected Deadlock details below : <br><br>${con} <br><br>",subject:'Deadlock Details')
+	  def parser =new groovy.json.JsonSlurper();
+      def obj2 = parser.parseText(sendMailOutput3)
+}	 
+	
+     if((!sendMailReturn3.equals("0")))
+     {
+	 
+		LogMessage_Append +="Failed to execute the block to send mail";
+		return ["1", LogMessage_Append.join("\r\n")];	 
+	 
+	 }
+	 
+	 if((sendMailReturn3.equals("0")))
+     {
+	 
+		//TO DELETE A FILE
+      //file.delete()
+	 
+	 	LogMessage_Append +="Database deadlock alert report is sent to the given mail address";
+		return ["0", LogMessage_Append.join("\r\n")];	 
+	 
+	 }
