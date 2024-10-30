@@ -1,0 +1,401 @@
+GET ACTIVE SESSIONS: 
+
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+DECLARE
+v_accountstatus varchar2(100);
+Function getAccountStatus(DBUserName IN varchar2)
+Return varchar2
+Is Val_Accountstatus varchar2(100);
+Begin
+select COUNT(*) into Val_Accountstatus from gv$session where status in('ACTIVE','INACTIVE') AND USERNAME = upper(DBUserName) and type != 'BACKGROUND';
+Return (Val_Accountstatus);
+Exception
+WHEN NO_DATA_FOUND THEN
+Val_Accountstatus :='NULL';
+return (Val_Accountstatus);
+End getAccountStatus;
+
+Begin
+v_accountstatus := getAccountStatus('${getCountOfActiveSessions:DBUserName}');
+DBMS_OUTPUT.PUT_LINE(v_accountstatus);
+End;
+/
+EXIT sql.sqlcode;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+col seSessionID format a30
+col serial format a15
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+Declare
+v_getActiveSessionsOracle varchar2(100);
+FUNCTION getActiveSessionsOracle
+   RETURN varchar2
+   IS Val_getActiveSessionsOracle varchar2(100) ;
+   CURSOR getActiveSessionsOracle_cur IS select SID seSessionID,serial# serial,status sesstatus from v$session where status='ACTIVE' and type != 'BACKGROUND';
+   getActiveSessionsOracle_rec  getActiveSessionsOracle_cur%rowtype;
+v_header VARCHAR2(1000) := NULL;
+cnt NUMBER;
+
+BEGIN
+cnt := 0;
+select 'seSessionID    serial       sesstatus' into v_header from dual;
+DBMS_OUTPUT.PUT_LINE(v_header||chr(10));
+FOR getActiveSessionsOracle_rec IN getActiveSessionsOracle_cur
+  LOOP
+dbms_output.put_line(getActiveSessionsOracle_rec.seSessionID || ' ' || getActiveSessionsOracle_rec.serial || ' ' || getActiveSessionsOracle_rec.sesstatus);
+     cnt := cnt + 1;
+END LOOP;
+
+BEGIN
+IF cnt = 0 THEN
+Val_getActiveSessionsOracle  := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_getActiveSessionsOracle);
+END IF;
+
+EXCEPTION
+WHEN OTHERS THEN
+Val_getActiveSessionsOracle := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_getActiveSessionsOracle);
+END;
+RETURN(Val_getActiveSessionsOracle);
+END getActiveSessionsOracle;
+
+BEGIN
+v_getActiveSessionsOracle := getActiveSessionsOracle;
+DBMS_OUTPUT.put_line (v_getActiveSessionsOracle);
+END;
+/
+EXIT sql.sqlcode;
+
+======================================================================
+
+GET INACTIVE SESSIONS
+
+col seSessionID format a30
+col serial format a15
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+Declare
+v_getInactiveSessionsOracle varchar2(100);
+FUNCTION getInactiveSessionsOracle
+   RETURN varchar2
+   IS Val_getInactiveSessionsOracle varchar2(100) ;
+   CURSOR getInactiveSessionsOracle_cur IS select SessionID seSessionID,serial# serial,status sesstatus from v\$session where status='INACTIVE' and type != 'BACKGROUND';
+   getInactiveSessionsOracle_rec  getInactiveSessionsOracle_cur%rowtype;
+v_header VARCHAR2(1000) := NULL;
+cnt NUMBER;
+
+BEGIN
+cnt := 0;
+select 'seSessionID    serial       sesstatus' into v_header from dual;
+DBMS_OUTPUT.PUT_LINE(v_header||chr(10));
+FOR getInactiveSessionsOracle_rec IN getInactiveSessionsOracle_cur
+  LOOP
+dbms_output.put_line(getInactiveSessionsOracle_rec.seSessionID || ' ' || getInactiveSessionsOracle_rec.serial || ' ' || getInactiveSessionsOracle_rec.sesstatus);
+     cnt := cnt + 1;
+END LOOP;
+
+BEGIN
+IF cnt = 0 THEN
+Val_getInactiveSessionsOracle  := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_getInactiveSessionsOracle);
+END IF;
+
+EXCEPTION
+WHEN OTHERS THEN
+Val_getInactiveSessionsOracle := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_getInactiveSessionsOracle);
+END;
+RETURN(Val_getInactiveSessionsOracle);
+END getInactiveSessionsOracle;
+
+BEGIN
+v_getInactiveSessionsOracle := getInactiveSessionsOracle;
+DBMS_OUTPUT.put_line (v_getInactiveSessionsOracle);
+END;
+/
+EXIT sql.sqlcode;
+
+===================================================
+
+GET ID OF LONG RUNNING QUERIES
+
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+DECLARE
+v_data varchar2(100);
+FUNCTION  getSQLIDofLongRunningQueries
+RETURN varchar2
+IS val_data varchar2(100) ;
+CURSOR getSQLID_cur IS SELECT sql_id into val_data FROM V$SESSION_LONGOPS WHERE TIME_REMAINING > 0;
+getSQLID_rec  getSQLID_cur%rowtype;
+cnt NUMBER;
+BEGIN
+cnt := 0;
+FOR getSQLID_rec IN getSQLID_cur
+  LOOP
+    if cnt > 0 then 
+	dbms_output.put(',');
+	end if;
+        dbms_output.put(getSQLID_rec.SQL_ID);
+     cnt := cnt + 1;
+  END LOOP;
+BEGIN
+IF cnt = 0 THEN
+val_data := 'NULL';
+DBMS_OUTPUT.PUT_LINE(val_data);
+END IF;
+EXCEPTION
+WHEN OTHERS THEN
+val_data  := 'FAILED';
+DBMS_OUTPUT.PUT_LINE(val_data);
+END;
+RETURN(val_data);
+END  getSQLIDofLongRunningQueries;
+
+BEGIN
+v_data :=  getSQLIDofLongRunningQueries;
+DBMS_OUTPUT.put_line (v_data);
+END;
+/
+EXIT sql.sqlcode;
+
+==================================================
+GET LONG RUNNING JOBS
+
+set linesize 300
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+Declare
+v_oraLongRunningDet varchar2(100);
+FUNCTION getOracleLongRunningJobs
+   RETURN varchar2
+   IS Val_oraLongRunningDet varchar2(100) ;
+   CURSOR oraLongRunningDet_cur IS SELECT osuser,sl.sql_id sqlid,sl.sql_hash_value sqlhashvalue,start_time starttime,opname,units,target,elapsed_seconds,time_remaining,message FROM v$session_longops sl inner join v$session s ON sl.SID = s.SID AND sl.SERIAL# = s.SERIAL# WHERE time_remaining > 0;
+   oraLongRunningDet_rec  oraLongRunningDet_cur%rowtype;
+
+cnt NUMBER;
+
+BEGIN
+cnt := 0;
+
+	dbms_output.put_line('OSUSER' || '~' || 'SQLID' || '~' || 'SQLHASHVALUE' || '~' || 'STARTTIME' || '~' || 'OPNAME' || '~' || 'UNITS' || '~' || 'TARGET' || '~' || 'ELAPSEDSECONDS' || '~' || 'TIMEREMAINING' || '~' || 'MESSAGE' || '<BR>' ); 
+	FOR oraLongRunningDet_rec IN oraLongRunningDet_cur
+  LOOP
+	dbms_output.put_line(oraLongRunningDet_rec.osuser || '~' || oraLongRunningDet_rec.sqlid || '~' || oraLongRunningDet_rec.sqlhashvalue || '~' || oraLongRunningDet_rec.starttime || '~' || oraLongRunningDet_rec.opname || '~' || oraLongRunningDet_rec.units || '~' || oraLongRunningDet_rec.target || '~' || oraLongRunningDet_rec.elapsed_seconds || '~' || oraLongRunningDet_rec.time_remaining || '~' || oraLongRunningDet_rec.message || '<BR>' ); 
+     	cnt := cnt + 1;
+  END LOOP;
+
+BEGIN
+IF cnt = 0 THEN
+Val_oraLongRunningDet := '------- NO ROWS SELECTED -------';
+DBMS_OUTPUT.PUT_LINE(Val_oraLongRunningDet);
+END IF;
+
+EXCEPTION
+WHEN OTHERS THEN
+Val_oraLongRunningDet  := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_oraLongRunningDet);
+END;
+
+RETURN(Val_oraLongRunningDet);
+END getOracleLongRunningJobs;
+
+BEGIN
+v_oraLongRunningDet := getOracleLongRunningJobs;
+--DBMS_OUTPUT.put_line (v_oraLongRunningDet);
+END;
+/
+EXIT sql.sqlcode;
+
+=================================================
+
+GET BLOCKING SESSIONS
+
+select
+   blocking_session,
+   sid,
+   serial#,
+   wait_class,
+   seconds_in_wait
+from
+   v$session
+where
+   blocking_session is not NULL
+order by
+   blocking_session;
+   
+   
+====================================================
+
+set serveroutput on
+set pagesize 1000 linesize 500 heading off feedback off verify off echo off
+Declare
+v_CheckORAMessage varchar2(100);
+FUNCTION getTablespaceUsageReport
+   RETURN varchar2
+   IS Val_CheckORAMessage varchar2(100) ;
+   CURSOR ORAMessage_cur IS  select c.Timestamp "TIMESTAMP",
+	   d.HostName "HOSTNAME",
+	   d.InstanceName "INSTANCENAME",
+	   e.DatabaseName "DATABASENAME",
+	   a.tablespace_name "TABLESPACENAME",
+       a.bytes_alloc/(1024*1024) "TOTALALLOCATEDMB",
+       a.physical_bytes/(1024*1024) "TOTALPHYSICALMB",
+       nvl(b.tot_used,0)/(1024*1024) "TOTALUSEDMB",
+       (nvl(b.tot_used,0)/a.bytes_alloc)*100 "USEDPERCENTAGE"
+from ( select tablespace_name,
+       sum(bytes) physical_bytes,
+       sum(decode(autoextensible,'NO',bytes,'YES',maxbytes)) bytes_alloc
+       from dba_data_files
+       group by tablespace_name ) a,
+     ( select tablespace_name, sum(bytes) tot_used
+       from dba_segments
+       group by tablespace_name ) b,
+	 ( select to_char(sysdate,'MM/DD/YYYY HH:MI:SS') Timestamp from dual) c,
+	 ( select host_name HostName,instance_name InstanceName from v$instance) d,
+	 ( select name DatabaseName from v$database ) e
+where a.tablespace_name = b.tablespace_name (+)
+and   a.tablespace_name not in (select distinct tablespace_name from dba_temp_files)
+and   a.tablespace_name not like '%UNDO%'
+order by 1;
+   check_ORAMessage_rec  ORAMessage_cur%rowtype;
+v_header VARCHAR2(1000) := NULL;
+cnt NUMBER;
+
+BEGIN
+cnt := 0;
+
+	FOR check_ORAMessage_rec IN ORAMessage_cur
+  LOOP
+	dbms_output.put_line(check_ORAMessage_rec.TIMESTAMP || ',' || check_ORAMessage_rec.HOSTNAME || ',' || check_ORAMessage_rec.INSTANCENAME || ',' || check_ORAMessage_rec.DATABASENAME || ',' || check_ORAMessage_rec.TABLESPACENAME || ',' || check_ORAMessage_rec.TOTALALLOCATEDMB  || ',' || check_ORAMessage_rec.TOTALPHYSICALMB  || ',' || check_ORAMessage_rec.TOTALUSEDMB  || ',' || check_ORAMessage_rec.USEDPERCENTAGE); 
+     	cnt := cnt + 1;
+  END LOOP;
+
+BEGIN
+IF cnt = 0 THEN
+Val_CheckORAMessage  := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_CheckORAMessage);
+END IF;
+
+EXCEPTION
+WHEN OTHERS THEN
+Val_CheckORAMessage:= 'FAILED';
+DBMS_OUTPUT.PUT_LINE(Val_CheckORAMessage);
+END;
+
+RETURN(Val_CheckORAMessage);
+END getTablespaceUsageReport;
+
+BEGIN
+v_CheckORAMessage := getTablespaceUsageReport;
+
+--DBMS_OUTPUT.put_line (v_CheckORAMessage);
+END;
+/
+EXIT sql.sqlcode;   
+
+=====================================================
+
+set linesize 300
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+Declare
+v_getDatabaseUsage varchar2(100);
+FUNCTION DatabaseUsageSizeInDet
+   RETURN varchar2
+   IS Val_getDatabaseUsage varchar2(100) ;
+   CURSOR v_getDatabaseUsage_cur IS select "Allocated Size in GB" AllocatedSizeinGB,"Used Size in GB" - "Free Size in GB" UsedSizeinGB,"Free Size in GB" FreeSizeinGB,round((("Used Size in GB"-"Free Size in GB")/"Allocated Size in GB" *100),2) UsedPercentage 
+from 
+(select round((sum(bytes)/1024/1024/1024),2) "Allocated Size in GB" from (select decode(autoextensible,'YES',(case when bytes >= maxbytes then bytes else maxbytes END),'NO',bytes) bytes from dba_data_files union all select decode(autoextensible,'YES',(case when bytes >= maxbytes then bytes else maxbytes END),'NO',bytes) bytes from dba_temp_files )) a, 
+(select round((sum(bytes)/1024/1024/1024),2) "Used Size in GB" from (select bytes from v$datafile union all select bytes from v$tempfile)) b, 
+(select round((sum(bytes)/1024/1024/1024),2) "Free Size in GB" from (select bytes from dba_free_space)) c;
+   v_getDatabaseUsage_rec  v_getDatabaseUsage_cur%rowtype;
+
+cnt NUMBER;
+
+BEGIN
+cnt := 0;
+
+
+	FOR v_getDatabaseUsage_rec IN v_getDatabaseUsage_cur
+  LOOP
+       dbms_output.put_line('AllocatedSizeinGB  : ' || v_getDatabaseUsage_rec.AllocatedSizeinGB );
+	   dbms_output.put_line('UsedSizeinGB       : ' || v_getDatabaseUsage_rec.UsedSizeinGB );
+	   dbms_output.put_line('FreeSizeinGB       : ' || v_getDatabaseUsage_rec.FreeSizeinGB );
+	   dbms_output.put_line('UsedPercentage     : ' || v_getDatabaseUsage_rec.UsedPercentage );
+     	cnt := cnt + 1;
+  END LOOP;
+
+BEGIN
+IF cnt = 0 THEN
+Val_getDatabaseUsage := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_getDatabaseUsage);
+END IF;
+
+EXCEPTION
+WHEN OTHERS THEN
+Val_getDatabaseUsage  := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_getDatabaseUsage);
+END;
+
+RETURN(Val_getDatabaseUsage);
+END DatabaseUsageSizeInDet;
+
+BEGIN
+v_getDatabaseUsage := DatabaseUsageSizeInDet;
+--DBMS_OUTPUT.put_line (v_getDatabaseUsage);
+END;
+/
+EXIT sql.sqlcode;
+
+====================================================
+GETFAILEDLOGINREPORT
+
+set serveroutput on
+set pagesize 0 heading off feedback off verify off echo off
+Declare
+v_GetFailedLoginReport varchar2(200);
+FUNCTION GetFailedLoginReport(a IN varchar2)
+   RETURN varchar2
+   IS Val_GetFailedLoginReport varchar2(100) ;
+   CURSOR GetFailedLoginReport_cur IS select rtrim(OS_USERNAME)OSUSER,rtrim(USERNAME)DBUSER,rtrim(USERHOST)HOST,rtrim(TERMINAL)TERMINAL,rtrim(TIMESTAMP)TIMESTAMP,rtrim(action_name) ACTION from dba_audit_trail  where ACTION_NAME='LOGON' and returncode >1 and  timestamp >= sysdate-a;
+
+   GetFailedLoginReport_rec  GetFailedLoginReport_cur%rowtype;
+	v_header VARCHAR2(1000) := NULL;
+
+cnt NUMBER;
+
+BEGIN
+cnt := 0;
+
+
+FOR GetFailedLoginReport_rec IN GetFailedLoginReport_cur
+  LOOP
+dbms_output.put_line(GetFailedLoginReport_rec.OSUSER || '|' || GetFailedLoginReport_rec.DBUSER || '|' || GetFailedLoginReport_rec.HOST || '|' || GetFailedLoginReport_rec.TERMINAL || '|' || GetFailedLoginReport_rec.TIMESTAMP || '|' || GetFailedLoginReport_rec.action );
+     cnt := cnt + 1;
+  END LOOP;
+
+BEGIN
+IF cnt = 0 THEN
+Val_GetFailedLoginReport := 'NO ROWS SELECTED';
+DBMS_OUTPUT.PUT_LINE(Val_GetFailedLoginReport);
+END IF;
+
+EXCEPTION
+WHEN OTHERS THEN
+Val_GetFailedLoginReport := 'NULL';
+DBMS_OUTPUT.PUT_LINE(Val_GetFailedLoginReport);
+END;
+
+RETURN(Val_GetFailedLoginReport);
+END GetFailedLoginReport;
+
+BEGIN
+v_GetFailedLoginReport := GetFailedLoginReport('30');
+END;
+/
+EXIT sql.sqlcode;
